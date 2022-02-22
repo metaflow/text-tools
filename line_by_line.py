@@ -1,9 +1,9 @@
 import argparse
 from itertools import zip_longest 
-import os
 import re
 import difflib
-import pprint
+import sys
+# import pprint
 import readchar
 
 def remove_punctuation(s: str):
@@ -19,10 +19,10 @@ args = parser.parse_args()
 print(f'left {args.left}')
 print(f'right {args.right}')
 
-with open(args.left) as f:
+with open(args.left, encoding='utf8') as f:
     left = [x.strip() for x in f]
 
-with open(args.right) as f:
+with open(args.right, encoding='utf8') as f:
     right = [x for x in f]
     right = [remove_punctuation(x) for x in right]
     right = [normalize_spacing(x) for x in right]
@@ -30,7 +30,7 @@ with open(args.right) as f:
 
 if len(left) != len(right):
     print(f'left {len(left)} lines, right {len(right)} lines')
-    os.exit(1)
+    exit(1)
 
 for i in range(len(left)):
     while True:
@@ -39,10 +39,10 @@ for i in range(len(left)):
         # user = left[i]
         t = normalize_spacing(remove_punctuation(user)).strip()
         a = t.split(' ')
-        d = difflib.Differ()
+        # differ = difflib.Differ()
         # print(right[i])
         # print(t)
-        diff = [x for x in d.compare(right[i].split(' '), t.split(' '))]
+        diff = [x for x in difflib.Differ().compare(right[i].split(' '), t.split(' '))]
         # pprint.pprint(diff)
         match_from = []
         match_to = []
@@ -63,20 +63,32 @@ for i in range(len(left)):
         z = zip_longest(match_from, match_to, fillvalue='')
         out_from = []
         out_to = []
+        out_hightlight = []
         difference = False
-        for (x, y) in z:  
-            difference = difference or (x != y)
+        for (x, y) in z:
             # print(x, y)
             n = max(len(x), len(y))
             out_from.append(x.ljust(n))
             out_to.append(y.ljust(n))
+            if x == y:
+                out_hightlight.append(' ' * n)
+            else:
+                out_hightlight.append('^' * n)
+                difference = True
         if not difference:
             break
         print(' '.join(out_from))
         print(' '.join(out_to))
-        c = readchar.readchar()
-        if c == 'n':
+        print(' '.join(out_hightlight))
+        c = readchar.readchar().decode('utf8')
+        # print(f'readchar "{c}"')
+        if c == 'n' or c == 'c':
             break
+        delete = 5
+        sys.stdout.write(f'\x1B[{delete}F')
+        for i in range(delete):
+            sys.stdout.write('\x1b[2K')
+            sys.stdout.write('\n')
     # for d in diff: 
     #     print(d)
     # print(right[i])
