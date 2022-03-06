@@ -63,21 +63,39 @@
 	});
 
 	function test() {
-		const d = diffWords(de, $user)
+		const d = diffWords(de, normalizeSpacing(removePunctuation($user)));
 		console.log('diffChars', d);
 		diffFrom = '';
 		diffTo = '';
+		let diffToLen = 0
+		let diffFromLen = 0;
 		for (const p of d) {
 			if (p.added) {
 				diffTo += `<em>${p.value}</em>`;
+				diffToLen += p.value.length;
 			} else if (p.removed) {
-				diffFrom += `<em>${p.value}</em>`;
+				diffFrom += `${p.value}`;
+				diffFromLen += p.value.length;
 			} else {
+				for (let i = 0; i < diffToLen - diffFromLen; i+=1) diffFrom += ' ';
+				if (diffFromLen - diffToLen > 0) {
+					diffTo += '<em>';
+					for (let i = 0; i < diffFromLen - diffToLen; i+=1) diffTo += '_';
+					diffTo += '</em>';
+				}
 				diffTo += p.value;
 				diffFrom += p.value;
+				diffToLen = diffFromLen = 0;
 			}
 		}
-		showDiff = true;
+		if (diffTo != diffFrom) {
+			showDiff = true;
+			console.log('from', diffFrom);
+			console.log('to', diffTo);
+		} else {
+			index += 1;
+			nextTry();
+		}
 	}
 </script>
 
@@ -98,8 +116,8 @@
 		}
 	}}></div>
 	{#if showDiff}
-	<p class='diff'>{@html diffFrom}</p>
-	<p class='diff'>{@html diffTo}</p>
+	<pre class='diff'>{@html diffFrom}</pre>
+	<pre class='diff'>{@html diffTo}</pre>
 	{/if}
 	<button on:click={() => {nextTry();}}>again</button>
 	<button on:click={() => {index += 1; nextTry();}}>next</button>
