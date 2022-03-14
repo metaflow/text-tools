@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "diff": "^5.0.0",
+    "leven": "^4.0.0",
     "shortcuts": "^1.8.1",
     "sirv-cli": "^2.0.0"
   }

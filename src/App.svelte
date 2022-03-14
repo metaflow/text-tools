@@ -1,41 +1,45 @@
 <script>
-	import { onMount } from 'svelte';
-	import {Shortcuts} from 'shortcuts';
-	import { writable } from 'svelte/store';
-	import { diffChars, diffLines, diffWords } from 'diff';
-	let inputFile = writable('http://localhost:80/de.csv');
+	import { onMount } from "svelte";
+	import { Shortcuts } from "shortcuts";
+	import { writable } from "svelte/store";
+	import { diffChars, diffLines, diffWords } from "diff";
+	import leven from "leven";
+	let inputFile = writable("http://localhost:80/de.csv");
 	let text;
 	let fragments = [];
-	let en = '';
-	let de = '';
+	let en = "";
+	let de = "";
 	let index = 0;
-	let user = writable('');
-	let diffFrom = '';
-	let diffTo = '';
+	let user = writable("");
+	let diffFrom = "";
+	let diffTo = "";
 	let showDiff = false;
-	
+
 	// onMount(async() => {
 	// });
 
 	function removePunctuation(s) {
-    return s.replaceAll(/[,!?".„():;]/g, ' ');
+		return s.replaceAll(/[,!?".„():;]/g, " ");
 	}
 
 	function normalizeSpacing(s) {
-    return s.replaceAll(/[ \t\n\r]+/g, ' ').trim();
+		return s.replaceAll(/[ \t\n\r]+/g, " ").trim();
 	}
 
 	let nextTry = () => {
-		console.log('next try', index);
+		console.log("next try", index);
 		if (fragments[index] !== undefined) {
 			en = fragments[index].en;
 			de = fragments[index].de;
-			$user = '';
+			$user = "";
 			showDiff = false;
+		} else {
+			en = "<EOF>";
+			de = "";
 		}
 	};
 
-	const shortcuts = new Shortcuts ();
+	const shortcuts = new Shortcuts();
 
 	async function loadText(url) {
 		const res = await fetch(url);
@@ -46,15 +50,15 @@
 		}
 	}
 
-	inputFile.subscribe(url => {
-		loadText(url).then(txt => {
+	inputFile.subscribe((url) => {
+		loadText(url).then((txt) => {
 			text = txt;
-			const lines = text.split('\n');
-			fragments = lines.map(line => {
-				let [left, right] = line.trim().split(';');
+			const lines = text.split("\n");
+			fragments = lines.map((line) => {
+				let [left, right] = line.trim().split(";");
 				return {
-					'en': right,
-					'de': normalizeSpacing(removePunctuation(left)),
+					en: right,
+					de: normalizeSpacing(removePunctuation(left)),
 				};
 			});
 			index = 0;
@@ -64,18 +68,20 @@
 
 	function test() {
 		const d = diffWords(de, normalizeSpacing(removePunctuation($user)));
+		$user = '';
 		console.log('diffChars', d);
 		diffFrom = '';
 		diffTo = '';
 		let diffToLen = 0
 		let diffFromLen = 0;
 		for (const p of d) {
+			const v = p.value;
 			if (p.added) {
-				diffTo += `<em>${p.value}</em>`;
-				diffToLen += p.value.length;
+				diffTo += `<em>${v}</em>`;
+				diffToLen += v.length;
 			} else if (p.removed) {
-				diffFrom += `${p.value}`;
-				diffFromLen += p.value.length;
+				diffFrom += `${v}`;
+				diffFromLen += v.length;
 			} else {
 				for (let i = 0; i < diffToLen - diffFromLen; i+=1) diffFrom += ' ';
 				if (diffFromLen - diffToLen > 0) {
@@ -83,15 +89,15 @@
 					for (let i = 0; i < diffFromLen - diffToLen; i+=1) diffTo += '_';
 					diffTo += '</em>';
 				}
-				diffTo += p.value;
-				diffFrom += p.value;
+				diffTo += v;
+				diffFrom += v;
 				diffToLen = diffFromLen = 0;
 			}
 		}
 		if (diffTo != diffFrom) {
 			showDiff = true;
-			console.log('from', diffFrom);
-			console.log('to', diffTo);
+			console.log("from", diffFrom);
+			console.log("to", diffTo);
 		} else {
 			index += 1;
 			nextTry();
@@ -100,34 +106,49 @@
 </script>
 
 <main>
-	<div><input bind:value={$inputFile}></div>
-	<p class="challenge">{en}</p>
-	<div><input bind:value={$user} on:keydown={(e) => {
-		if (e.key == 'Enter')	{
-			if (e.ctrlKey) {
-				index += 1; nextTry();
-				return;
-			}
-			if (showDiff) {
-				nextTry();
-			} else {
-				test();
-			};
-		}
-	}}></div>
+	<div><input bind:value={$inputFile} /></div>
+	<p class="challenge">{en} {index}</p>
+	<div>
+		<input
+			bind:value={$user}
+			on:keydown={(e) => {
+				if (showDiff) {
+					nextTry();
+					return;
+				}
+				if (e.key == "Enter") {
+					if (e.ctrlKey) {
+						index += 1;
+						nextTry();
+						return;
+					}
+					test();
+				}
+			}}
+		/>
+	</div>
 	{#if showDiff}
-	<pre class='diff'>{@html diffFrom}</pre>
-	<pre class='diff'>{@html diffTo}</pre>
+		<pre class="diff">{@html diffFrom}</pre>
+		<pre class="diff">{@html diffTo}</pre>
 	{/if}
-	<button on:click={() => {nextTry();}}>again</button>
-	<button on:click={() => {index += 1; nextTry();}}>next</button>
+	<button
+		on:click={() => {
+			nextTry();
+		}}>again</button
+	>
+	<button
+		on:click={() => {
+			index += 1;
+			nextTry();
+		}}>next</button
+	>
 </main>
 
 <style>
 	:global(body) {
 		background-color: #15141a;
 		font-size: 18px;
-		font-family: 'Courier New', Courier, monospace;
+		font-family: "Courier New", Courier, monospace;
 		color: #eee;
 	}
 	:global(input) {
