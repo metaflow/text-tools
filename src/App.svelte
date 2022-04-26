@@ -3,8 +3,7 @@
 	import { Shortcuts } from "shortcuts";
 	import { writable } from "svelte/store";
 	import { diffChars, diffLines, diffWords } from "diff";
-	import leven from "leven";
-	let inputFile = writable("http://localhost:80/de.csv");
+	let inputFile = writable(localStorage.getItem('inputFile'));
 	let text;
 	let fragments = [];
 	let en = "";
@@ -51,6 +50,7 @@
 	}
 
 	inputFile.subscribe((url) => {
+		localStorage.setItem('inputFile', url);
 		loadText(url).then((txt) => {
 			text = txt;
 			const lines = text.split("\n");
