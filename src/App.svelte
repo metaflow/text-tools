@@ -1,9 +1,7 @@
 <script>
-	import { onMount } from "svelte";
-	import { Shortcuts } from "shortcuts";
 	import { writable } from "svelte/store";
-	import { diffChars, diffLines, diffWords } from "diff";
-	let inputFile = writable(localStorage.getItem('inputFile'));
+	import { diffWords } from "diff";
+	let inputFile = writable(localStorage.getItem("inputFile"));
 	let text;
 	let fragments = [];
 	let en = "";
@@ -13,12 +11,14 @@
 	let diffFrom = "";
 	let diffTo = "";
 	let showDiff = false;
-
-	// onMount(async() => {
-	// });
+	let totalErrorCount = 0;
+	let currentErrorCount = 0;
+	let letterMode = writable(
+		localStorage.getItem("letterMode") == "true" || false
+	);
 
 	function removePunctuation(s) {
-		return s.replaceAll(/[,!?".„():;]/g, " ");
+		return s.replaceAll(/[-,!?".„():;@#$%_^&*<>]/g, " ");
 	}
 
 	function normalizeSpacing(s) {
@@ -26,7 +26,8 @@
 	}
 
 	let nextTry = () => {
-		console.log("next try", index);
+		totalErrorCount += currentErrorCount;
+		currentErrorCount = 0;
 		if (fragments[index] !== undefined) {
 			en = fragments[index].en;
 			de = fragments[index].de;
@@ -38,8 +39,6 @@
 		}
 	};
 
-	const shortcuts = new Shortcuts();
-
 	async function loadText(url) {
 		const res = await fetch(url);
 		if (res.ok) {
@@ -49,8 +48,13 @@
 		}
 	}
 
+	letterMode.subscribe((value) => {
+		localStorage.setItem("letterMode", value.toString());
+		console.log("letterMode", value.toString());
+	});
+
 	inputFile.subscribe((url) => {
-		localStorage.setItem('inputFile', url);
+		localStorage.setItem("inputFile", url);
 		loadText(url).then((txt) => {
 			text = txt;
 			const lines = text.split("\n");
@@ -68,26 +72,27 @@
 
 	function test() {
 		const d = diffWords(de, normalizeSpacing(removePunctuation($user)));
-		$user = '';
-		console.log('diffChars', d);
-		diffFrom = '';
-		diffTo = '';
-		let diffToLen = 0
+		$user = "";
+		diffFrom = "";
+		diffTo = "";
+		let diffToLen = 0;
 		let diffFromLen = 0;
 		for (const p of d) {
 			const v = p.value;
 			if (p.added) {
+				currentErrorCount += 1;
 				diffTo += `<em>${v}</em>`;
 				diffToLen += v.length;
 			} else if (p.removed) {
+				currentErrorCount += 1;
 				diffFrom += `${v}`;
 				diffFromLen += v.length;
 			} else {
-				for (let i = 0; i < diffToLen - diffFromLen; i+=1) diffFrom += ' ';
+				for (let i = 0; i < diffToLen - diffFromLen; i += 1) diffFrom += " ";
 				if (diffFromLen - diffToLen > 0) {
-					diffTo += '<em>';
-					for (let i = 0; i < diffFromLen - diffToLen; i+=1) diffTo += '_';
-					diffTo += '</em>';
+					diffTo += "<em>";
+					for (let i = 0; i < diffFromLen - diffToLen; i += 1) diffTo += "_";
+					diffTo += "</em>";
 				}
 				diffTo += v;
 				diffFrom += v;
@@ -103,29 +108,49 @@
 			nextTry();
 		}
 	}
+
+	function inputKeydown(e) {
+		if (showDiff) {
+			nextTry();
+			return;
+		}
+		if (e.key == "Enter") {
+			if (e.ctrlKey) {
+				index += 1;
+				nextTry();
+				return;
+			}
+			if ($letterMode) {
+				if (currentErrorCount == 0) index += 1;
+				nextTry();
+			} else {
+				test();
+			}
+		}
+	}
+	function inputKeyup(e) {
+		if (!$letterMode) return;
+		if ($user.length <= de.length) {
+			let sub = de.substring(0, $user.length);
+			if (sub != $user) {
+				$user = sub;
+				currentErrorCount+=1;
+			}
+		} else {
+			$user = de;
+		}
+		if ($user == de && currentErrorCount == 0) {
+			index += 1;
+			nextTry();
+		}
+	}
 </script>
 
 <main>
 	<div><input bind:value={$inputFile} /></div>
 	<p class="challenge">{en} {index}</p>
 	<div>
-		<input
-			bind:value={$user}
-			on:keydown={(e) => {
-				if (showDiff) {
-					nextTry();
-					return;
-				}
-				if (e.key == "Enter") {
-					if (e.ctrlKey) {
-						index += 1;
-						nextTry();
-						return;
-					}
-					test();
-				}
-			}}
-		/>
+		<input bind:value={$user} on:keydown={inputKeydown} on:keyup={inputKeyup}/>
 	</div>
 	{#if showDiff}
 		<pre class="diff">{@html diffFrom}</pre>
@@ -134,14 +159,28 @@
 	<button
 		on:click={() => {
 			nextTry();
-		}}>again</button
-	>
+		}}
+		>again
+	</button>
 	<button
 		on:click={() => {
 			index += 1;
 			nextTry();
 		}}>next</button
 	>
+	<button
+		on:click={() => {
+			$letterMode = !$letterMode;
+		}}
+		>mode: {$letterMode ? "letter" : "sentence"}
+	</button>
+	<button
+		on:click={() => {
+			currentErrorCount = 0;
+			totalErrorCount = 0;
+		}}
+		>errors: {currentErrorCount} / {totalErrorCount}
+	</button>
 </main>
 
 <style>
