@@ -13,6 +13,7 @@
 	let showDiff = false;
 	let totalErrorCount = 0;
 	let currentErrorCount = 0;
+	let userDisabled = false;
 	let letterMode = writable(
 		localStorage.getItem("letterMode") == "true" || false
 	);
@@ -121,7 +122,7 @@
 				return;
 			}
 			if ($letterMode) {
-				if (currentErrorCount == 0) index += 1;
+				if (currentErrorCount == 0 && $user.length > 0) index += 1;
 				nextTry();
 			} else {
 				test();
@@ -135,6 +136,9 @@
 			if (sub != $user) {
 				$user = sub;
 				currentErrorCount+=1;
+				// Disable user input for 1 second.
+				userDisabled = true;
+				setTimeout(() => { userDisabled = false; }, 1000);
 			}
 		} else {
 			$user = de;
@@ -150,7 +154,7 @@
 	<div><input bind:value={$inputFile} /></div>
 	<p class="challenge">{en} {index}</p>
 	<div>
-		<input bind:value={$user} on:keydown={inputKeydown} on:keyup={inputKeyup}/>
+		<input class:disabled={userDisabled} class:complete={$user == de} disabled={userDisabled} bind:value={$user} on:keydown={inputKeydown} on:keyup={inputKeyup}/>
 	</div>
 	{#if showDiff}
 		<pre class="diff">{@html diffFrom}</pre>
@@ -229,5 +233,12 @@
 	.diff :global(em) {
 		color: rgb(255, 62, 0);
 		font-style: normal;
+	}
+
+	.disabled {
+		color: rgb(238, 90, 90);
+	}
+	.complete {
+		color: rgb(72, 170, 72);
 	}
 </style>
