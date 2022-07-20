@@ -14,6 +14,8 @@
 	let totalErrorCount = 0;
 	let currentErrorCount = 0;
 	let userDisabled = false;
+	let userInput;
+	let inputFileE;
 	let letterMode = writable(
 		localStorage.getItem("letterMode") == "true" || false
 	);
@@ -135,10 +137,15 @@
 			let sub = de.substring(0, $user.length);
 			if (sub != $user) {
 				$user = sub;
-				currentErrorCount+=1;
+				currentErrorCount += 1;
 				// Disable user input for 1 second.
 				userDisabled = true;
-				setTimeout(() => { userDisabled = false; }, 1000);
+				userInput.disabled = true;
+				setTimeout(() => {
+					userDisabled = false;
+					userInput.disabled = false;
+					userInput.focus();
+				}, 1000);
 			}
 		} else {
 			$user = de;
@@ -154,7 +161,14 @@
 	<div><input bind:value={$inputFile} /></div>
 	<p class="challenge">{en} {index}</p>
 	<div>
-		<input class:disabled={userDisabled} class:complete={$user == de} disabled={userDisabled} bind:value={$user} on:keydown={inputKeydown} on:keyup={inputKeyup}/>
+		<input
+			bind:this={userInput}
+			class:disabled={userDisabled}
+			class:complete={$user == de}
+			bind:value={$user}
+			on:keydown={inputKeydown}
+			on:keyup={inputKeyup}
+		/>
 	</div>
 	{#if showDiff}
 		<pre class="diff">{@html diffFrom}</pre>
